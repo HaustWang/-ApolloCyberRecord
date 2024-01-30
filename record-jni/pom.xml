@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.apollo.cyber</groupId>
+        <artifactId>record</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>record-jni</artifactId>
+
+    <packaging>nar</packaging>
+
+    <dependencies>
+        <!-- native loader -->
+        <dependency>
+            <groupId>org.scijava</groupId>
+            <artifactId>native-lib-loader</artifactId>
+            <version>2.1.3</version>
+        </dependency>
+        <!-- <dependency>
+            <groupId>com.github.maven-nar</groupId>
+            <artifactId>nar-maven-plugin</artifactId>
+            <version>3.10.1</version>
+        </dependency> -->
+        <dependency>
+            <groupId>org.javolution</groupId>
+            <artifactId>javolution-core-java</artifactId>
+            <version>6.0.0</version>
+        </dependency>
+    </dependencies>
+    <properties>
+        <maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
+    </properties>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.github.maven-nar</groupId>
+                    <artifactId>nar-maven-plugin</artifactId>
+                    <version>3.10.1</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <cpp>
+                            <options>
+                                <option>-fPIC</option>
+                                <option>-I${project.basedir}</option>
+                                <option>-I${project.basedir}/src/c++</option>
+                                <option>-I${project.basedir}/src/c++/cyber/proto</option>
+                                <option>-I/usr/local/include</option>
+                                <option>-I/usr/include</option>
+                                <option>-I/usr/include/python3.8</option>
+                                <option>-g</option>
+                                <option>-ggdb</option>
+                            </options>
+                        </cpp>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>versions-maven-plugin</artifactId>
+                    <version>2.2</version>
+                    <configuration>
+                        <generateBackupPoms>false</generateBackupPoms>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.3</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>2.4</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <resources>
+            <resource>
+                <directory>${project.basedir}</directory>
+                <includes>
+                    <include>src/**/**.h</include>
+                </includes>
+                <targetPath>${project.build.directory}/nar/${project.artifactId}-${project.version}-noarch/include</targetPath>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <executions>
+                    <execution>
+                        <id>generate-protobuf</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <tasks>
+                                <exec executable="protoc">
+                                    <arg value="--cpp_out=src/c++/cyber/proto/"/>
+                                    <arg value="--proto_path=src/c++/cyber/proto/"/>
+                                    <arg value="src/c++/cyber/proto/proto_desc.proto"/>
+                                    <arg value="src/c++/cyber/proto/scheduler_conf.proto"/>
+                                    <arg value="src/c++/cyber/proto/record.proto"/>
+                                    <arg value="src/c++/cyber/proto/classic_conf.proto"/>
+                                    <arg value="src/c++/cyber/proto/cyber_conf.proto"/>
+                                    <arg value="src/c++/cyber/proto/qos_profile.proto"/>
+                                    <arg value="src/c++/cyber/proto/choreography_conf.proto"/>
+                                    <arg value="src/c++/cyber/proto/component_conf.proto"/>
+                                    <arg value="src/c++/cyber/proto/dag_conf.proto"/>
+                                    <arg value="src/c++/cyber/proto/transport_conf.proto"/>
+                                    <arg value="src/c++/cyber/proto/run_mode_conf.proto"/>
+                                    <arg value="src/c++/cyber/proto/perf_conf.proto"/>
+                                </exec>
+                            </tasks>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <!-- https://maven-nar.github.io/configuration.html -->
+                <groupId>com.github.maven-nar</groupId>
+                <artifactId>nar-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <cpp>
+                        <sourceDirectory>${project.basedir}</sourceDirectory>
+                        <includes>
+                            <include>src/**/**.cpp</include>
+                            <include>src/**/**.cc</include>
+                        </includes>
+                        <multiThreaded>true</multiThreaded>
+                    </cpp>
+                    <libraries>
+                        <!-- if use shared, we need to configure the specified platform package 
+							in pom -->
+                        <library>
+                            <type>jni</type>
+                            <narSystemPackage>com.apollo.cyber</narSystemPackage>
+                            <linkCPP>true</linkCPP>
+                        </library>
+                    </libraries>
+                    <linker>
+                        <sysLibs>
+                            <sysLib>
+                                <name>protobuf</name>
+                            </sysLib>
+                            <sysLib>
+                                <name>protobuf-lite</name>
+                            </sysLib>
+                            <sysLib>
+                                <name>python3.8</name>
+                            </sysLib>
+                            <sysLib>
+                                <name>glog</name>
+                            </sysLib>
+                        </sysLibs>
+                    </linker>
+                    <javah />
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.6</version>
+                <executions>
+                    <execution>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>epoch</classifier>
+                            <classesDirectory>${build.outputDirectory}</classesDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>2.10</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin> -->
+        </plugins>
+    </build>
+</project>
